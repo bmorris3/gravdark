@@ -35,6 +35,9 @@ def hat7_params():
 
     # Required by some friedrich methods below but not by batman:
     params.duration = dur
+    params.inc_stellar = 83.143
+    params.lam = 0
+    params.per_rot = params.per
     return params
 
 # def hat7_params():
