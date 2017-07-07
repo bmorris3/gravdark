@@ -84,7 +84,7 @@ def clean_up(require_input=False):
             shutil.rmtree(directory)
 
 class STSP(object):
-    def __init__(self, lc, transit_params, spot_params, outdir=None):
+    def __init__(self, lc, transit_params, spot_params, outdir=None, keep_dir=False):
         """
         Parameters
         ----------
@@ -114,13 +114,15 @@ class STSP(object):
             os.makedirs(self.outdir)
 
         self.model_path = os.path.join(self.outdir, 'model_lc.dat')
+        self.keep_dir = keep_dir
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
         #self.safe_clean_up()
-        shutil.rmtree(self.outdir)
+        if not self.keep_dir:
+            clean_up()
 
     def safe_clean_up(self):
         paths_to_delete = ['model_lc.dat', 'test.in', 'xyzdetail.txt',
@@ -131,7 +133,7 @@ class STSP(object):
                 os.remove(abspath)
 
     def stsp_lc(self, n_ld_rings=40, verbose=False, t_bypass=False, stsp_exec=None):
-        self.safe_clean_up()
+        #self.safe_clean_up()
 
         if stsp_exec is None:
             stsp_exec = stsp_executable
@@ -197,17 +199,14 @@ class STSP(object):
         old_cwd = os.getcwd()
         os.chdir(self.outdir)
 
-        stdout = subprocess.check_output([stsp_exec,
-                                          'test.in'])
+        stdout = subprocess.check_output([stsp_exec, 'test.in'])
         if verbose:
             print(stdout.decode('ascii'))
         os.chdir(old_cwd)
 
         # Read the outputs
-        tbl = ascii.read(os.path.join(self.outdir, 'test_lcout.txt'))
+        tbl = ascii.read(os.path.join(self.outdir, 'test_lcout.txt'), format='fast_no_header')
         stsp_times, stsp_fluxes, stsp_flag = tbl['col1'], tbl['col4'], tbl['col5']
-
-        #clean_up()
 
         return LightCurve(times=stsp_times, fluxes=stsp_fluxes, quarters=stsp_flag)
 
