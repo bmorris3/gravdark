@@ -3,12 +3,16 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 from glob import glob
 import datetime
-import os, subprocess, shutil
+import os, subprocess, shutil, time
 import numpy as np
 from astropy.io import ascii
 from .lightcurve import LightCurve
 
-stsp_executable = '/Users/bmmorris/git/STSP/stsp'
+from threading import Lock
+
+lock = Lock()
+
+stsp_executable = os.path.abspath('/Users/bmmorris/git/STSP/stsp_20170707')
 
 infile_template_l = """#PLANET PROPERTIES
 1							; Number of planets -- (if there are more than 1 planet, then the set of 8 planet properties are repeated)
@@ -110,8 +114,8 @@ class STSP(object):
         else:
             self.outdir = outdir
 
-        if not os.path.exists(self.outdir):
-            os.makedirs(self.outdir)
+        #if not os.path.exists(self.outdir):
+        os.makedirs(self.outdir)
 
         self.model_path = os.path.join(self.outdir, 'model_lc.dat')
         self.keep_dir = keep_dir
@@ -122,7 +126,8 @@ class STSP(object):
     def __exit__(self, *args):
         #self.safe_clean_up()
         if not self.keep_dir:
-            clean_up()
+            shutil.rmtree(self.outdir)
+            #clean_up()
 
     def safe_clean_up(self):
         paths_to_delete = ['model_lc.dat', 'test.in', 'xyzdetail.txt',
@@ -196,18 +201,48 @@ class STSP(object):
             in_file.write(in_file_text)
 
         # Run STSP
-        old_cwd = os.getcwd()
-        os.chdir(self.outdir)
+        # old_cwd = os.getcwd()
+        # os.chdir(self.outdir)
 
-        stdout = subprocess.check_output([stsp_exec, 'test.in'])
-        if verbose:
-            print(stdout.decode('ascii'))
-        os.chdir(old_cwd)
+        # stdout = subprocess.check_output(stsp_exec + ' test.in',
+        #                                  #cwd=self.outdir,
+        #                                  shell=True)
+        # print(stdout)
+
+
+        # if not verbose:
+        # stdout = subprocess.check_output([stsp_exec, 'test.in'],
+        #                                  #cwd=self.outdir,
+        #                                  shell=True)
+
+
+        # subprocess.check_call([stsp_exec, 'test.in'],
+        #                        cwd=self.outdir, shell=True)
+        #if verbose:
+        #    print(stdout)
+
+        #     subprocess.check_call([stsp_exec, 'test.in'])
+        # else:
+        #     stdout = subprocess.check_output([stsp_exec, 'test.in'])
+        #     print(stdout.decode('ascii'))
+        try:
+            #subprocess.check_output([stsp_exec, 'test.in'], cwd=self.outdir)
+            stdout = subprocess.check_output([stsp_exec, 'test.in'], cwd=self.outdir)
+        except subprocess.CalledProcessError as err:
+            pass#print("Failed. Error:", err.output, err.stderr, err.stdout)
+
+
+        # os.chdir(old_cwd)
 
         # Read the outputs
-        tbl = ascii.read(os.path.join(self.outdir, 'test_lcout.txt'), format='fast_no_header')
-        stsp_times, stsp_fluxes, stsp_flag = tbl['col1'], tbl['col4'], tbl['col5']
+        if os.stat(os.path.join(self.outdir, 'test_lcout.txt')).st_size == 0:
+            stsp_times = self.lc.times.jd
+            stsp_fluxes = np.ones_like(self.lc.fluxes)
+            stsp_flag = 0 * np.ones_like(self.lc.fluxes)
 
+        else:
+            tbl = ascii.read(os.path.join(self.outdir, 'test_lcout.txt'), format='fast_no_header')
+            stsp_times, stsp_fluxes, stsp_flag = tbl['col1'], tbl['col4'], tbl['col5']
         return LightCurve(times=stsp_times, fluxes=stsp_fluxes, quarters=stsp_flag)
 
 def spot_params_to_string(spot_params):
