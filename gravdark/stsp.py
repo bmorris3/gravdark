@@ -12,7 +12,7 @@ from threading import Lock
 
 lock = Lock()
 
-stsp_executable = os.path.abspath('/Users/bmmorris/git/STSP/stsp_20170707')
+stsp_executable = os.path.abspath('/Users/bmmorris/git/STSP/stsp_20170714') # 07
 
 infile_template_l = """#PLANET PROPERTIES
 1							; Number of planets -- (if there are more than 1 planet, then the set of 8 planet properties are repeated)
@@ -233,7 +233,7 @@ class STSP(object):
 
 
         # os.chdir(old_cwd)
-
+        time.sleep(0.01)
         # Read the outputs
         if os.stat(os.path.join(self.outdir, 'test_lcout.txt')).st_size == 0:
             stsp_times = self.lc.times.jd
